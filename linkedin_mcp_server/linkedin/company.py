@@ -182,13 +182,14 @@ class CompanyReader:
     async def search_companies(
         self,
         keywords: str,
+        company_size: list[str] | None = None,
     ) -> dict[str, Any]:
         """Search for companies and extract the results page.
 
         Returns:
             {url, sections: {search_results: text}}
         """
-        url = build_company_search_url(keywords)
+        url = build_company_search_url(keywords, company_size=company_size)
         extracted = await self._capture.capture(
             url,
             "search_results",

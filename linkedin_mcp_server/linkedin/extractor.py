@@ -218,9 +218,15 @@ class LinkedInExtractor:
             current_company=current_company,
         )
 
-    async def search_companies(self, keywords: str) -> dict[str, Any]:
+    async def search_companies(
+        self,
+        keywords: str,
+        company_size: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Search for companies and extract the results page."""
-        return await self._company.search_companies(keywords)
+        return await self._company.search_companies(
+            keywords, company_size=company_size
+        )
 
     async def search_posts(
         self,

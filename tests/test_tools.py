@@ -2560,7 +2560,7 @@ class TestSearchCompaniesTool:
         tool_fn = await get_tool_fn(mcp, "search_companies")
         result = await tool_fn("fintech", mock_context)
         assert "search_results" in result["sections"]
-        mock_extractor.search_companies.assert_awaited_once_with("fintech")
+        mock_extractor.search_companies.assert_awaited_once_with("fintech", company_size=None)
 
     async def test_search_companies_error(self, mock_context, serve_extractor):
         from fastmcp.exceptions import ToolError

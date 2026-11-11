@@ -14,6 +14,10 @@ from pydantic import Field
 from linkedin_mcp_server.callbacks import MCPContextProgressCallback
 from linkedin_mcp_server.config.schema import DEFAULT_TOOL_TIMEOUT_SECONDS
 from linkedin_mcp_server.dependencies import get_ready_extractor, tool_errors
+from linkedin_mcp_server.error_handler import CodedToolError, ErrorCode
+from linkedin_mcp_server.linkedin.contracts import FilterValidationError
+from linkedin_mcp_server.linkedin.search_urls import build_company_search_url
+from linkedin_mcp_server.tools.person import StrList
 from linkedin_mcp_server.linkedin import parse_company_sections
 from linkedin_mcp_server.linkedin.contracts import RATE_LIMITED_SECTION_TEXT
 from linkedin_mcp_server.linkedin.contracts import rate_limited_section_error
@@ -159,6 +163,7 @@ def register_company_tools(
     async def search_companies(
         keywords: str,
         ctx: Context,
+        company_size: StrList | None = None,
     ) -> dict[str, Any]:
         """
         Search for companies on LinkedIn.
@@ -166,19 +171,31 @@ def register_company_tools(
         Args:
             keywords: Search keywords (e.g., "fintech", "anthropic", "electric vehicles")
             ctx: FastMCP context for progress reporting
+            company_size: Optional headcount filter, one or more of "1-10",
+                "11-50", "51-200", "201-500", "501-1000", "1001-5000",
+                "5001-10000", "10001+". Example: ["1-10", "11-50"].
 
         Returns:
             Dict with url, sections (search_results -> raw text), and optional references.
             The LLM should parse the raw text to extract individual companies and their pages.
         """
+        try:
+            build_company_search_url(keywords, company_size=company_size)
+        except FilterValidationError as e:
+            raise CodedToolError(str(e), ErrorCode.INVALID_ARGUMENT) from e
+
         extractor = await get_ready_extractor(ctx, tool_name="search_companies")
-        logger.info("Searching companies: keywords='%s'", keywords)
+        logger.info(
+            "Searching companies: keywords='%s', company_size=%s",
+            keywords,
+            company_size,
+        )
 
         await ctx.report_progress(
             progress=0, total=100, message="Starting company search"
         )
 
-        result = await extractor.search_companies(keywords)
+        result = await extractor.search_companies(keywords, company_size=company_size)
 
         await ctx.report_progress(progress=100, total=100, message="Complete")
 

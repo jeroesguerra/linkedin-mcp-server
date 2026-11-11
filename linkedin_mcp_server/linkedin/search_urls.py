@@ -186,18 +186,41 @@ def build_people_search_url(
     return f"https://www.linkedin.com/search/results/people/?{params}"
 
 
-def build_company_search_url(keywords: str) -> str:
-    """Build a LinkedIn company search URL.
+# LinkedIn company search encodes headcount as one-letter tokens in the
+# ``companySize`` list facet. Keys are the ranges LinkedIn shows in its UI.
+COMPANY_SIZE_MAP = {
+    "1-10": "B",
+    "11-50": "C",
+    "51-200": "D",
+    "201-500": "E",
+    "501-1000": "F",
+    "1001-5000": "G",
+    "5001-10000": "H",
+    "10001+": "I",
+}
 
-    One parameter today, and a function anyway: every search URL this server
-    navigates to is then written in one place, so the next caller has nothing
-    to assemble by hand and no second spelling of the host and route to keep
-    in step with the other three.
+
+def build_company_search_url(
+    keywords: str,
+    company_size: list[str] | None = None,
+) -> str:
+    """Build a LinkedIn company search URL, optionally filtered by headcount.
+
+    ``company_size`` takes ranges as LinkedIn shows them ("1-10", "11-50",
+    ...). An unknown range is refused rather than sent, because LinkedIn
+    ignores it and answers with the unfiltered result set.
     """
-    return (
-        "https://www.linkedin.com/search/results/companies/"
-        f"?keywords={quote_plus(keywords)}"
-    )
+    params = f"keywords={quote_plus(keywords)}"
+    if company_size:
+        invalid = [s for s in company_size if s not in COMPANY_SIZE_MAP]
+        if invalid:
+            raise FilterValidationError(
+                f"Invalid company_size {invalid!r}; expected any of "
+                f"{list(COMPANY_SIZE_MAP)!r}"
+            )
+        tokens = [COMPANY_SIZE_MAP[s] for s in company_size]
+        params += f"&companySize={_encode_list_facet(tokens)}"
+    return f"https://www.linkedin.com/search/results/companies/?{params}"
 
 
 def build_content_search_url(

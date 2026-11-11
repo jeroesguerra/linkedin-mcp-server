@@ -659,3 +659,20 @@ class TestBuildContentSearchUrl:
 
         assert repr(date_posted) in str(error.value)
         assert "past-24h" in str(error.value)
+
+
+class TestCompanySizeFilter:
+    def test_single_size(self):
+        url = build_company_search_url("design studio", company_size=["1-10"])
+        assert url.endswith("&companySize=%5B%22B%22%5D")
+
+    def test_multiple_sizes(self):
+        url = build_company_search_url("agency", company_size=["1-10", "11-50"])
+        assert "companySize=%5B%22B%22%2C%22C%22%5D" in url
+
+    def test_unknown_size_refused(self):
+        import pytest
+        from linkedin_mcp_server.linkedin.contracts import FilterValidationError
+
+        with pytest.raises(FilterValidationError):
+            build_company_search_url("agency", company_size=["tiny"])
